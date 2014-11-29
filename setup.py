@@ -5,7 +5,7 @@ setup(
     version='0.1.1',
     zip_safe=False,
     platforms='any',
-    packages=['flood'],
+    packages=[],
     install_requires=['netkit'],
     scripts=['flood/bin/flood.py'],
     url="https://github.com/dantezhu/flood",
