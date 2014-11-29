@@ -12,5 +12,5 @@ setup(
     license="BSD",
     author="dantezhu",
     author_email="zny2008@gmail.com",
-    description="server load test",
+    description="tool for server load performance testing",
 )
