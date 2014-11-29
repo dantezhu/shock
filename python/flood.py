@@ -7,8 +7,7 @@ from netkit.box import Box
 
 import time
 import socket
-from multiprocessing import Pool
-from thread import start_new_thread
+from multiprocessing import Process, Value
 from threading import Thread
 
 
@@ -44,14 +43,14 @@ class ProcessWorker(object):
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
     failed_transactions = 0
 
-    def __init__(self, concurrent, reps, url, msg_cmd, socket_type):
+    def __init__(self, concurrent, reps, url, msg_cmd, socket_type, share_result):
         self.concurrent = concurrent
         self.reps = reps
         self.url = url
         self.msg_cmd = msg_cmd
         self.socket_type = socket_type
         self.stream_checker = Box().check
-        self.stream_checker = Box().check
+        self.share_result = share_result
 
     def make_stream(self):
         if self.socket_type == 'socket':
@@ -98,8 +97,8 @@ class ProcessWorker(object):
 
         for it in xrange(0, self.concurrent):
             job = Thread(target=self.thread_worker, args=[it])
+            job.daemon = True
             job.start()
-            job.daemon = Thread
             jobs.append(job)
 
         for job in jobs:
@@ -109,24 +108,23 @@ class ProcessWorker(object):
 
         self.elapsed_time = end_time - begin_time
 
-        return dict(
-            elapsed_time=self.elapsed_time,
-            transactions=self.transactions,
-            successful_transactions=self.successful_transactions,
-            failed_transactions=self.failed_transactions,
-        )
+        self.share_result['elapsed_time'].value += self.elapsed_time
+        self.share_result['transactions'].value += self.transactions
+        self.share_result['successful_transactions'].value += self.successful_transactions
+        self.share_result['failed_transactions'].value += self.failed_transactions
 
 
 class Flood(object):
 
     # 经过的时间
-    elapsed_time = 0
+    share_elapsed_time = Value('f', 0)
     # 总请求，如果链接失败而没发送，不算在这里
-    transactions = 0
+    share_transactions = Value('i', 0)
     # 成功请求数
-    successful_transactions = 0
+    share_successful_transactions = Value('i', 0)
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
-    failed_transactions = 0
+    share_failed_transactions = Value('i', 0)
+
 
     def __init__(self, concurrent, reps, url, msg_cmd, socket_type, process_count):
         self.concurrent = concurrent
@@ -137,18 +135,42 @@ class Flood(object):
         self.process_count = process_count
 
     def run(self):
+        worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.socket_type, dict(
+            elapsed_time=self.share_elapsed_time,
+            transactions=self.share_transactions,
+            successful_transactions=self.share_successful_transactions,
+            failed_transactions=self.share_failed_transactions,
+        ))
 
-        pool = Pool(processes=self.process_count)
-        worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.socket_type)
-        result_list = pool.map(worker.run, [])
+        jobs = []
 
-        for result in result_list:
-            self.elapsed_time += result['elapsed_time']
-            self.transactions += result['transactions']
-            self.successful_transactions += result['successful_transactions']
-            self.failed_transactions += result['failed_transactions']
+        for it in xrange(0, self.process_count):
+            job = Process(target=worker.run)
+            job.daemon = True
+            job.start()
+            jobs.append(job)
 
-        self.elapsed_time = float(self.elapsed_time) / self.process_count
+        for job in jobs:
+            job.join()
+
+        # 平均
+        self.share_elapsed_time.value = self.share_elapsed_time.value / self.process_count
+
+    @property
+    def elapsed_time(self):
+        return self.share_elapsed_time.value
+
+    @property
+    def transactions(self):
+        return self.share_transactions.value
+
+    @property
+    def successful_transactions(self):
+        return self.share_successful_transactions.value
+
+    @property
+    def failed_transactions(self):
+        return self.share_failed_transactions.value
 
     @property
     def transaction_rate(self):
