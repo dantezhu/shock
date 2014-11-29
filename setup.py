@@ -1,14 +1,14 @@
 from setuptools import setup
 
 setup(
-    name="flood",
+    name="shock",
     version='0.1.1',
     zip_safe=False,
     platforms='any',
     packages=[],
     install_requires=['netkit'],
-    scripts=['flood/bin/flood.py'],
-    url="https://github.com/dantezhu/flood",
+    scripts=['shock/bin/shock.py'],
+    url="https://github.com/dantezhu/shock",
     license="BSD",
     author="dantezhu",
     author_email="zny2008@gmail.com",

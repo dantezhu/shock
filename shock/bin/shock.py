@@ -117,7 +117,7 @@ class ProcessWorker(object):
         self.share_result['failed_transactions'].value += self.failed_transactions
 
 
-class Flood(object):
+class Shock(object):
 
     # 经过的时间
     share_elapsed_time = Value('f', 0)
@@ -227,16 +227,16 @@ class Flood(object):
 @click.option('--socket_type', '-t', default='socket', help='SOCKET_TYPE, socket/websocket')
 @click.option('--process_count', '-p', default=1, help='process_count, 1')
 def main(concurrent, reps, url, msg_cmd, socket_type, process_count):
-    flood = Flood(concurrent, reps, url, msg_cmd, socket_type, process_count)
-    flood.run()
+    shock = Shock(concurrent, reps, url, msg_cmd, socket_type, process_count)
+    shock.run()
     click.secho('done', fg='green')
-    click.secho('Transactions:              %-10d hits' % flood.transactions)
-    click.secho('Availability:              %-10.02f %%' % (flood.availability * 100))
-    click.secho('Elapsed time:              %-10.02f secs' % flood.elapsed_time)
-    click.secho('Response time:             %-10.02f secs' % flood.response_time)
-    click.secho('Transaction rate:          %-10.02f trans/sec' % flood.transaction_rate)
-    click.secho('Successful transactions:   %-10d hits' % flood.successful_transactions)
-    click.secho('Failed transactions:       %-10d hits' % flood.failed_transactions)
+    click.secho('Transactions:              %-10d hits' % shock.transactions)
+    click.secho('Availability:              %-10.02f %%' % (shock.availability * 100))
+    click.secho('Elapsed time:              %-10.02f secs' % shock.elapsed_time)
+    click.secho('Response time:             %-10.02f secs' % shock.response_time)
+    click.secho('Transaction rate:          %-10.02f trans/sec' % shock.transaction_rate)
+    click.secho('Successful transactions:   %-10d hits' % shock.successful_transactions)
+    click.secho('Failed transactions:       %-10d hits' % shock.failed_transactions)
 
 
 if __name__ == '__main__':
