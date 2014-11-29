@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from gevent import monkey; monkey.patch_all()
-import gevent
-
 import click
 
 from netkit.stream import Stream
@@ -11,6 +8,8 @@ from netkit.box import Box
 import time
 import socket
 from multiprocessing import Pool
+from thread import start_new_thread
+from threading import Thread
 
 
 class WSClientStream(object):
@@ -98,10 +97,13 @@ class ProcessWorker(object):
         begin_time = time.time()
 
         for it in xrange(0, self.concurrent):
-            job = gevent.spawn(self.thread_worker, it)
+            job = Thread(target=self.thread_worker, args=[it])
+            job.start()
+            job.daemon = Thread
             jobs.append(job)
 
-        gevent.joinall(jobs)
+        for job in jobs:
+            job.join()
 
         end_time = time.time()
 
