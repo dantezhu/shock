@@ -1,6 +1,6 @@
-#include "Siege.h"
+#include "Flood.h"
 
-Siege::Siege() {
+Flood::Flood() {
     m_port = 0;
     m_threadCount = 0;
     m_concurrent = 0;
@@ -8,11 +8,11 @@ Siege::Siege() {
     m_msgCmd = 0;
 }
 
-Siege::~Siege() {
+Flood::~Flood() {
 
 }
 
-int Siege::run(const std::string& host, short port, int threadCount, int concurrent, int reps, int msgCmd) {
+int Flood::run(const std::string& host, short port, int threadCount, int concurrent, int reps, int msgCmd) {
     m_host = host;
     m_port = port;
     m_threadCount = threadCount;

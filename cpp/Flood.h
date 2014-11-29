@@ -13,10 +13,10 @@
 #include <set>
 #include <map>
 
-class Siege {
+class Flood {
 public:
-    Siege() {}
-    virtual ~Siege() {}
+    Flood() {}
+    virtual ~Flood() {}
     
     int run(const std::string& host, short port, int threadCount, int concurrent, int reps, int msgCmd);
 
