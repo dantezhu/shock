@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 import click
 
@@ -46,14 +46,15 @@ class ProcessWorker(object):
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
     failed_transactions = 0
 
-    def __init__(self, concurrent, reps, url, msg_cmd, socket_type, share_result):
+    def __init__(self, concurrent, reps, url, msg_cmd, socket_type, timeout, share_result):
         self.concurrent = concurrent
         self.reps = reps
         self.url = url
         self.msg_cmd = msg_cmd
         self.socket_type = socket_type
-        self.stream_checker = Box().check
+        self.timeout = timeout
         self.share_result = share_result
+        self.stream_checker = Box().check
 
     def make_stream(self):
         if self.socket_type == 'socket':
@@ -61,6 +62,7 @@ class ProcessWorker(object):
             address = (host, int(port))
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect(address)
+            s.settimeout(self.timeout)
             stream = Stream(s, use_gevent=True, lock_mode=0)
         else:
             import websocket
@@ -85,7 +87,13 @@ class ProcessWorker(object):
         for it in xrange(0, self.reps):
             self.transactions += 1
             stream.write(send_buf)
-            recv_buf = stream.read_with_checker(self.stream_checker)
+            try:
+                recv_buf = stream.read_with_checker(self.stream_checker)
+            except socket.timeout:
+                self.failed_transactions += 1
+                click.secho('thread_worker[%s] socket timeout' % worker_idx, fg='red')
+                continue
+
             if not recv_buf:
                 click.secho('thread_worker[%s] socket closed' % worker_idx, fg='red')
                 self.failed_transactions += 1
@@ -129,16 +137,17 @@ class Shock(object):
     share_failed_transactions = Value('i', 0)
 
 
-    def __init__(self, concurrent, reps, url, msg_cmd, socket_type, process_count):
+    def __init__(self, concurrent, reps, url, msg_cmd, socket_type, timeout, process_count):
         self.concurrent = concurrent
         self.reps = reps
         self.url = url
         self.msg_cmd = msg_cmd
         self.socket_type = socket_type
+        self.timeout = timeout
         self.process_count = process_count
 
     def run(self):
-        worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.socket_type, dict(
+        worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.socket_type, self.timeout, dict(
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,
             successful_transactions=self.share_successful_transactions,
@@ -225,9 +234,10 @@ class Shock(object):
 @click.option('--url', '-u', default='127.0.0.1:7777', help='URL, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo')
 @click.option('--msg_cmd', '-m', default=1, type=int, help='REMOTE_CMD, 1')
 @click.option('--socket_type', '-t', default='socket', help='SOCKET_TYPE, socket/websocket')
-@click.option('--process_count', '-p', default=1, help='process_count, 1')
-def main(concurrent, reps, url, msg_cmd, socket_type, process_count):
-    shock = Shock(concurrent, reps, url, msg_cmd, socket_type, process_count)
+@click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
+@click.option('--process_count', '-p', default=1, type=int, help='process_count, 1')
+def main(concurrent, reps, url, msg_cmd, socket_type, timeout, process_count):
+    shock = Shock(concurrent, reps, url, msg_cmd, socket_type, timeout, process_count)
     shock.run()
     click.secho('done', fg='green')
     click.secho('Transactions:              %-10d hits' % shock.transactions)
