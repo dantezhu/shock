@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__version__ = '0.1.2'
+__version__ = '0.1.5'
 
 import click
+import signal
 
 from netkit.stream import Stream
 from netkit.box import Box
@@ -102,6 +103,8 @@ class ProcessWorker(object):
                 self.successful_transactions += 1
 
     def run(self):
+        self._handle_child_proc_signals()
+
         jobs = []
 
         begin_time = time.time()
@@ -124,6 +127,9 @@ class ProcessWorker(object):
         self.share_result['successful_transactions'].value += self.successful_transactions
         self.share_result['failed_transactions'].value += self.failed_transactions
 
+    def _handle_child_proc_signals(self):
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 class Shock(object):
 
@@ -147,6 +153,8 @@ class Shock(object):
         self.process_count = process_count
 
     def run(self):
+        self._handle_parent_proc_signals()
+
         worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.socket_type, self.timeout, dict(
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,
@@ -167,6 +175,12 @@ class Shock(object):
 
         # 平均
         self.share_elapsed_time.value = self.share_elapsed_time.value / self.process_count
+
+    def _handle_parent_proc_signals(self):
+        # 修改SIGTERM，否则父进程被term，子进程不会自动退出；明明子进程都设置为daemon了的
+        signal.signal(signal.SIGTERM, signal.default_int_handler)
+        # 即使对于SIGINT，SIG_DFL和default_int_handler也是不一样的，要是想要抛出KeyboardInterrupt，应该用default_int_handler
+        signal.signal(signal.SIGINT, signal.default_int_handler)
 
     @property
     def elapsed_time(self):
