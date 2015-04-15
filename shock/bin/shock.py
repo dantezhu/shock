@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 
 import click
 import signal
@@ -243,13 +243,13 @@ class Shock(object):
 
 
 @click.command()
-@click.option('--concurrent', '-c', type=int, default=10, help='CONCURRENT users, default is 10')
-@click.option('--reps', '-r', type=int, default=10, help='REPS, number of times to run the test.')
-@click.option('--url', '-u', default='127.0.0.1:7777', help='URL, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo')
-@click.option('--msg_cmd', '-m', default=1, type=int, help='REMOTE_CMD, 1')
-@click.option('--socket_type', '-t', default='socket', help='SOCKET_TYPE, socket/websocket')
+@click.option('--concurrent', '-c', type=int, default=10, help='spawn users, 10')
+@click.option('--reps', '-r', type=int, default=10, help='run times, 10')
+@click.option('--url', '-u', help='url, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo', required=True)
+@click.option('--msg_cmd', '-m', default=1, type=int, help='msg cmd, 1')
+@click.option('--socket_type', '-t', default='socket', help='socket type, socket/websocket')
 @click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
-@click.option('--process_count', '-p', default=1, type=int, help='process_count, 1')
+@click.option('--process_count', '-p', default=1, type=int, help='process count, 1')
 def main(concurrent, reps, url, msg_cmd, socket_type, timeout, process_count):
     shock = Shock(concurrent, reps, url, msg_cmd, socket_type, timeout, process_count)
     shock.run()
