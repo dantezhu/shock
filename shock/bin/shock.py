@@ -11,7 +11,7 @@ from netkit.box import Box
 
 import time
 import socket
-from multiprocessing import Process, Value
+from multiprocessing import Process, Value, Lock
 from threading import Thread
 
 
@@ -122,14 +122,19 @@ class ProcessWorker(object):
 
         self.elapsed_time = end_time - begin_time
 
-        self.share_result['elapsed_time'].value += self.elapsed_time
-        self.share_result['transactions'].value += self.transactions
-        self.share_result['successful_transactions'].value += self.successful_transactions
-        self.share_result['failed_transactions'].value += self.failed_transactions
+        try:
+            self.share_result['lock'].acquire()
+            self.share_result['elapsed_time'].value += self.elapsed_time
+            self.share_result['transactions'].value += self.transactions
+            self.share_result['successful_transactions'].value += self.successful_transactions
+            self.share_result['failed_transactions'].value += self.failed_transactions
+        finally:
+            self.share_result['lock'].release()
 
     def _handle_child_proc_signals(self):
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 
 class Shock(object):
 
@@ -141,7 +146,6 @@ class Shock(object):
     share_successful_transactions = Value('i', 0)
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
     share_failed_transactions = Value('i', 0)
-
 
     def __init__(self, concurrent, reps, url, msg_cmd, socket_type, timeout, process_count):
         self.concurrent = concurrent
@@ -156,6 +160,7 @@ class Shock(object):
         self._handle_parent_proc_signals()
 
         worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.socket_type, self.timeout, dict(
+            lock=Lock(),
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,
             successful_transactions=self.share_successful_transactions,
