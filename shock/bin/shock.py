@@ -11,7 +11,8 @@ from netkit.box import Box
 
 import time
 import socket
-from multiprocessing import Process, Value, Lock
+from multiprocessing import Process, Value, Lock as ProcessLock
+from threading import Lock as ThreadLock
 from threading import Thread
 
 
@@ -38,6 +39,8 @@ class ProcessWorker(object):
     """
     进程worker
     """
+    # 线程间锁
+    thread_lock = None
     # 经过的时间
     elapsed_time = 0
     # 总请求，如果链接失败而没发送，不算在这里
@@ -46,8 +49,13 @@ class ProcessWorker(object):
     successful_transactions = 0
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
     failed_transactions = 0
+    # 进程间共享数据
+    share_result = None
 
     def __init__(self, concurrent, reps, url, msg_cmd, socket_type, timeout, share_result):
+        self.thread_lock = ThreadLock()
+        self.stream_checker = Box().check
+
         self.concurrent = concurrent
         self.reps = reps
         self.url = url
@@ -55,7 +63,6 @@ class ProcessWorker(object):
         self.socket_type = socket_type
         self.timeout = timeout
         self.share_result = share_result
-        self.stream_checker = Box().check
 
     def make_stream(self):
         if self.socket_type == 'socket':
@@ -76,8 +83,7 @@ class ProcessWorker(object):
         try:
             stream = self.make_stream()
         except:
-            # 直接把所有的错误请求都加上
-            self.failed_transactions += self.reps
+            # 相当于说这个根本没有发起请求，所以在请求量上就没有加上，所以在失败上也就不统计了
             click.secho('thread_worker[%s] socket connect fail' % worker_idx, fg='red')
             return
 
@@ -85,8 +91,11 @@ class ProcessWorker(object):
         box.cmd = self.msg_cmd
 
         send_buf = box.pack()
+
+        transactions = successful_transactions = failed_transactions  = 0
+
         for it in xrange(0, self.reps):
-            self.transactions += 1
+            transactions += 1
             stream.write(send_buf)
             try:
                 recv_buf = stream.read_with_checker(self.stream_checker)
@@ -97,10 +106,18 @@ class ProcessWorker(object):
 
             if not recv_buf:
                 click.secho('thread_worker[%s] socket closed' % worker_idx, fg='red')
-                self.failed_transactions += 1
+                failed_transactions += 1
                 break
             else:
-                self.successful_transactions += 1
+                successful_transactions += 1
+
+        try:
+            self.thread_lock.acquire()
+            self.transactions += transactions
+            self.successful_transactions += successful_transactions
+            self.failed_transactions += failed_transactions
+        finally:
+            self.thread_lock.release()
 
     def run(self):
         self._handle_child_proc_signals()
@@ -160,7 +177,7 @@ class Shock(object):
         self._handle_parent_proc_signals()
 
         worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.socket_type, self.timeout, dict(
-            lock=Lock(),
+            lock=ProcessLock(),
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,
             successful_transactions=self.share_successful_transactions,
