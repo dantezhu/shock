@@ -47,7 +47,7 @@ class ProcessWorker(object):
     transactions = 0
     # 成功请求数
     successful_transactions = 0
-    # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
+    # 失败请求数，真实的发送了请求之后的报错才算在这里
     failed_transactions = 0
     # 进程间共享数据
     share_result = None
@@ -92,7 +92,7 @@ class ProcessWorker(object):
 
         send_buf = box.pack()
 
-        transactions = successful_transactions = failed_transactions  = 0
+        transactions = successful_transactions = failed_transactions = 0
 
         for it in xrange(0, self.reps):
             transactions += 1
@@ -100,7 +100,7 @@ class ProcessWorker(object):
             try:
                 recv_buf = stream.read_with_checker(self.stream_checker)
             except socket.timeout:
-                self.failed_transactions += 1
+                failed_transactions += 1
                 click.secho('thread_worker[%s] socket timeout' % worker_idx, fg='red')
                 continue
 
@@ -241,7 +241,7 @@ class Shock(object):
             return 0
 
     @property
-    def plan_transactions(self):
+    def expected_transactions(self):
         """
         计划的请求数
         :return:
@@ -250,8 +250,8 @@ class Shock(object):
 
     @property
     def availability(self):
-        if self.plan_transactions != 0:
-            return 1.0 * self.successful_transactions / self.plan_transactions
+        if self.expected_transactions != 0:
+            return 1.0 * self.successful_transactions / self.expected_transactions
         else:
             return 0
 
@@ -276,6 +276,7 @@ def main(concurrent, reps, url, msg_cmd, socket_type, timeout, process_count):
     shock = Shock(concurrent, reps, url, msg_cmd, socket_type, timeout, process_count)
     shock.run()
     click.secho('done', fg='green')
+    click.secho('Expected Transactions:     %-10d hits' % shock.expected_transactions)
     click.secho('Transactions:              %-10d hits' % shock.transactions)
     click.secho('Availability:              %-10.02f %%' % (shock.availability * 100))
     click.secho('Elapsed time:              %-10.02f secs' % shock.elapsed_time)
