@@ -2,12 +2,12 @@ from setuptools import setup
 
 setup(
     name="shock",
-    version='0.1.10',
+    version='0.1.11',
     zip_safe=False,
     platforms='any',
     packages=[],
     install_requires=['netkit', 'click'],
-    scripts=['shock/bin/shock.py'],
+    scripts=['shock/bin/shock'],
     url="https://github.com/dantezhu/shock",
     license="BSD",
     author="dantezhu",
