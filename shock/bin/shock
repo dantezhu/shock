@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__version__ = '0.1.11'
+__version__ = '0.1.12'
 
 import click
 import signal
@@ -275,10 +275,10 @@ def main(concurrent, reps, url, msg_cmd, timeout, process_count):
     click.secho('done', fg='green')
     click.secho('Expected Transactions:     %-10d hits' % shock.expected_transactions)
     click.secho('Transactions:              %-10d hits' % shock.transactions)
-    click.secho('Availability:              %-10.02f %%' % (shock.availability * 100))
-    click.secho('Elapsed time:              %-10.02f secs' % shock.elapsed_time)
-    click.secho('Response time:             %-10.02f secs' % shock.response_time)
-    click.secho('Transaction rate:          %-10.02f trans/sec' % shock.transaction_rate)
+    click.secho('Availability:              %-10.03f %%' % (shock.availability * 100))
+    click.secho('Elapsed time:              %-10.03f secs' % shock.elapsed_time)
+    click.secho('Response time:             %-10.03f secs' % shock.response_time)
+    click.secho('Transaction rate:          %-10.03f trans/sec' % shock.transaction_rate)
     click.secho('Successful transactions:   %-10d hits' % shock.successful_transactions)
     click.secho('Failed transactions:       %-10d hits' % shock.failed_transactions)
 
