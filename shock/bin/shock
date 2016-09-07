@@ -27,6 +27,10 @@ def version():
 @click.option('--msg_cmd', '-m', default=1, type=int, help='msg cmd, 1')
 @click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
 def echo(concurrent, reps, url, msg_cmd, timeout, processes):
+    """
+    测试send & recv
+    :return:
+    """
     obj = shock.ShockEcho(concurrent, reps, url, msg_cmd, timeout, processes)
     obj.run()
     click.secho('done', fg='green')
@@ -46,6 +50,9 @@ def echo(concurrent, reps, url, msg_cmd, timeout, processes):
 @click.option('--url', '-u', help='url, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo', required=True)
 @click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
 def connect(concurrent, url, timeout, processes):
+    """
+    测试connect
+    """
     obj = shock.ShockConnect(concurrent, url, timeout, processes)
     obj.run()
     click.secho('done', fg='green')
