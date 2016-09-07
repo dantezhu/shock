@@ -7,7 +7,7 @@ setup(
     platforms='any',
     packages=[],
     install_requires=['netkit', 'click'],
-    scripts=['shock/bin/shock'],
+    scripts=['shock/bin/shock', 'shock/bin/shock_connect'],
     url="https://github.com/dantezhu/shock",
     license="BSD",
     author="dantezhu",
