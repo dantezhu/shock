@@ -6,41 +6,17 @@ __version__ = '0.1.19'
 import click
 import signal
 
-from netkit.stream import Stream, LOCK_MODE_NONE
 from netkit.box import Box
+from netkit.contrib.tcp_client import TcpClient
 
 import time
-import socket
 from multiprocessing import Process, Value, Lock as ProcessLock
-from threading import Lock as ThreadLock
-from threading import Thread
-
-
-class WSClientStream(object):
-    """
-    websocket的封装
-    """
-
-    def __init__(self, sock):
-        self.sock = sock
-
-    def write(self, data):
-        from websocket import ABNF
-        return self.sock.send(data, ABNF.OPCODE_BINARY)
-
-    def read_with_checker(self, *args, **kwargs):
-        return self.sock.recv()
-
-    def close(self, *args, **kwargs):
-        return self.sock.close(*args, **kwargs)
 
 
 class ProcessWorker(object):
     """
     进程worker
     """
-    # 线程间锁
-    thread_lock = None
     # 经过的时间
     elapsed_time = 0
     # 总请求，如果链接失败而没发送，不算在这里
@@ -52,87 +28,39 @@ class ProcessWorker(object):
     # 进程间共享数据
     share_result = None
 
-    def __init__(self, concurrent, reps, url, msg_cmd, timeout, share_result):
-        self.thread_lock = ThreadLock()
+    def __init__(self, concurrent, url, timeout, share_result):
         self.stream_checker = Box().check
 
         self.concurrent = concurrent
-        self.reps = reps
         self.url = url
-        self.msg_cmd = msg_cmd
         self.timeout = timeout
         self.share_result = share_result
 
     def make_stream(self):
-        if self.url.startswith('ws://'):
-            import websocket
-            s = websocket.create_connection(self.url)
-            stream = WSClientStream(s)
-        else:
-            host, port = self.url.split(':')
-            address = (host, int(port))
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect(address)
-            s.settimeout(self.timeout)
-            stream = Stream(s, lock_mode=LOCK_MODE_NONE)
+        host, port = self.url.split(':')
+        address = (host, int(port))
 
-        return stream
+        client = TcpClient(Box, address=address, timeout=self.timeout)
+        client.connect()
 
-    def thread_worker(self, worker_idx):
-        try:
-            stream = self.make_stream()
-        except:
-            # 相当于说这个根本没有发起请求，所以在请求量上就没有加上，所以在失败上也就不统计了
-            click.secho('thread_worker[%s] socket connect fail' % worker_idx, fg='red')
-            return
-
-        box = Box()
-        box.cmd = self.msg_cmd
-
-        send_buf = box.pack()
-
-        transactions = successful_transactions = failed_transactions = 0
-
-        for it in xrange(0, self.reps):
-            transactions += 1
-            stream.write(send_buf)
-            try:
-                recv_buf = stream.read_with_checker(self.stream_checker)
-            except socket.timeout:
-                failed_transactions += 1
-                click.secho('thread_worker[%s] socket timeout' % worker_idx, fg='red')
-                continue
-
-            if not recv_buf:
-                click.secho('thread_worker[%s] socket closed' % worker_idx, fg='red')
-                failed_transactions += 1
-                break
-            else:
-                successful_transactions += 1
-
-        try:
-            self.thread_lock.acquire()
-            self.transactions += transactions
-            self.successful_transactions += successful_transactions
-            self.failed_transactions += failed_transactions
-        finally:
-            self.thread_lock.release()
+        return client
 
     def run(self):
         self._handle_child_proc_signals()
 
-        jobs = []
-
         begin_time = time.time()
 
+        # 要存起来，否则socket会自动释放
+        client_list = []
         for it in xrange(0, self.concurrent):
-            job = Thread(target=self.thread_worker, args=[it])
-            job.daemon = True
-            job.start()
-            jobs.append(job)
+            self.transactions += 1
 
-        for job in jobs:
-            job.join()
+            try:
+                client_list.append(self.make_stream())
+                self.successful_transactions += 1
+            except:
+                click.secho('socket[%s] connect fail' % it, fg='red')
+                self.failed_transactions += 1
 
         end_time = time.time()
 
@@ -163,18 +91,16 @@ class Shock(object):
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
     share_failed_transactions = Value('i', 0)
 
-    def __init__(self, concurrent, reps, url, msg_cmd, timeout, process_count):
+    def __init__(self, concurrent, url, timeout, process_count):
         self.concurrent = concurrent
-        self.reps = reps
         self.url = url
-        self.msg_cmd = msg_cmd
         self.timeout = timeout
         self.process_count = process_count
 
     def run(self):
         self._handle_parent_proc_signals()
 
-        worker = ProcessWorker(self.concurrent, self.reps, self.url, self.msg_cmd, self.timeout, dict(
+        worker = ProcessWorker(self.concurrent, self.url, self.timeout, dict(
             lock=ProcessLock(),
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,
@@ -244,7 +170,7 @@ class Shock(object):
         计划的请求数
         :return:
         """
-        return self.concurrent * self.reps * self.process_count
+        return self.concurrent * self.process_count
 
     @property
     def availability(self):
@@ -256,13 +182,11 @@ class Shock(object):
 
 @click.command()
 @click.option('--concurrent', '-c', type=int, default=10, help='spawn users, 10')
-@click.option('--reps', '-r', type=int, default=10, help='run times, 10')
 @click.option('--processes', '-p', default=1, type=int, help='process count, 1')
 @click.option('--url', '-u', help='url, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo', required=True)
-@click.option('--msg_cmd', '-m', default=1, type=int, help='msg cmd, 1')
 @click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
-def main(concurrent, reps, url, msg_cmd, timeout, processes):
-    shock = Shock(concurrent, reps, url, msg_cmd, timeout, processes)
+def main(concurrent, url, timeout, processes):
+    shock = Shock(concurrent, url, timeout, processes)
     shock.run()
     click.secho('done', fg='green')
     click.secho('Expected Transactions:     %-10d hits' % shock.expected_transactions)
