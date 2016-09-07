@@ -174,7 +174,7 @@ class Shock(object):
     def run(self):
         self._handle_parent_proc_signals()
 
-        worker = ProcessWorker(self.concurrent_per_process, self.reps, self.url, self.msg_cmd, self.timeout, dict(
+        worker = ProcessWorker(self.concurrent, self.reps, self.url, self.msg_cmd, self.timeout, dict(
             lock=ProcessLock(),
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,
@@ -244,7 +244,7 @@ class Shock(object):
         计划的请求数
         :return:
         """
-        return self.concurrent * self.reps
+        return self.concurrent * self.reps * self.process_count
 
     @property
     def availability(self):
@@ -253,24 +253,16 @@ class Shock(object):
         else:
             return 0
 
-    @property
-    def concurrent_per_process(self):
-        """
-        每个进程需要启动的并发链接数
-        :return:
-        """
-        return int(self.concurrent / self.process_count)
-
 
 @click.command()
 @click.option('--concurrent', '-c', type=int, default=10, help='spawn users, 10')
 @click.option('--reps', '-r', type=int, default=10, help='run times, 10')
+@click.option('--processes', '-p', default=1, type=int, help='process count, 1')
 @click.option('--url', '-u', help='url, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo', required=True)
 @click.option('--msg_cmd', '-m', default=1, type=int, help='msg cmd, 1')
 @click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
-@click.option('--process_count', '-p', default=1, type=int, help='process count, 1')
-def main(concurrent, reps, url, msg_cmd, timeout, process_count):
-    shock = Shock(concurrent, reps, url, msg_cmd, timeout, process_count)
+def main(concurrent, reps, url, msg_cmd, timeout, processes):
+    shock = Shock(concurrent, reps, url, msg_cmd, timeout, processes)
     shock.run()
     click.secho('done', fg='green')
     click.secho('Expected Transactions:     %-10d hits' % shock.expected_transactions)
