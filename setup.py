@@ -5,7 +5,7 @@ setup(
     version='0.1.19',
     zip_safe=False,
     platforms='any',
-    packages=[],
+    packages=['shock'],
     install_requires=['netkit', 'click'],
     scripts=['shock/bin/shock'],
     url="https://github.com/dantezhu/shock",
