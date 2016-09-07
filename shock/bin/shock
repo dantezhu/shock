@@ -6,7 +6,7 @@ __version__ = '0.1.16'
 import click
 import signal
 
-from netkit.stream import Stream
+from netkit.stream import Stream, LOCK_MODE_NONE
 from netkit.box import Box
 
 import time
@@ -74,7 +74,7 @@ class ProcessWorker(object):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect(address)
             s.settimeout(self.timeout)
-            stream = Stream(s, use_gevent=True, lock_mode=0)
+            stream = Stream(s, lock_mode=LOCK_MODE_NONE)
 
         return stream
 
