@@ -146,11 +146,14 @@ class ProcessWorker(object):
             self.share_result['lock'].release()
 
     def _handle_child_proc_signals(self):
-        signal.signal(signal.SIGTERM, signal.SIG_DFL)
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.default_int_handler)
+        # 即使对于SIGINT，SIG_DFL和default_int_handler也是不一样的，要是想要抛出KeyboardInterrupt，应该用default_int_handler
+        signal.signal(signal.SIGINT, signal.default_int_handler)
 
 
 class ShockEcho(object):
+
+    processes = None
 
     # 经过的时间
     share_elapsed_time = Value('f', 0)
@@ -162,6 +165,7 @@ class ShockEcho(object):
     share_failed_transactions = Value('i', 0)
 
     def __init__(self, concurrent, reps, url, msg_cmd, timeout, process_count):
+        self.processes = []
         self.concurrent = concurrent
         self.reps = reps
         self.url = url
@@ -180,25 +184,26 @@ class ShockEcho(object):
             failed_transactions=self.share_failed_transactions,
         ))
 
-        jobs = []
-
         for it in xrange(0, self.process_count):
-            job = Process(target=worker.run)
-            job.daemon = True
-            job.start()
-            jobs.append(job)
+            proc = Process(target=worker.run)
+            proc.daemon = True
+            proc.start()
+            self.processes.append(proc)
 
-        for job in jobs:
-            job.join()
+        for proc in self.processes:
+            proc.join()
 
         # 平均
         self.share_elapsed_time.value = self.share_elapsed_time.value / self.process_count
 
+    def _term_processes(self):
+        for proc in self.processes:
+            if proc.is_alive():
+                proc.terminate()
+
     def _handle_parent_proc_signals(self):
-        # 修改SIGTERM，否则父进程被term，子进程不会自动退出；明明子进程都设置为daemon了的
-        signal.signal(signal.SIGTERM, signal.default_int_handler)
-        # 即使对于SIGINT，SIG_DFL和default_int_handler也是不一样的，要是想要抛出KeyboardInterrupt，应该用default_int_handler
-        signal.signal(signal.SIGINT, signal.default_int_handler)
+        signal.signal(signal.SIGTERM, self._term_processes)
+        signal.signal(signal.SIGINT, self._term_processes)
 
     @property
     def elapsed_time(self):
