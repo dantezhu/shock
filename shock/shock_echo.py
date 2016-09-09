@@ -196,7 +196,7 @@ class ShockEcho(object):
         # 平均
         self.share_elapsed_time.value = self.share_elapsed_time.value / self.process_count
 
-    def _term_processes(self):
+    def _term_processes(self, *args):
         for proc in self.processes:
             if proc.is_alive():
                 proc.terminate()
