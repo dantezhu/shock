@@ -148,7 +148,7 @@ class ProcessWorker(object):
     def _handle_child_proc_signals(self):
         signal.signal(signal.SIGTERM, signal.default_int_handler)
         # 即使对于SIGINT，SIG_DFL和default_int_handler也是不一样的，要是想要抛出KeyboardInterrupt，应该用default_int_handler
-        signal.signal(signal.SIGINT, signal.default_int_handler)
+        # signal.signal(signal.SIGINT, signal.default_int_handler)
 
 
 class ShockEcho(object):
@@ -204,6 +204,7 @@ class ShockEcho(object):
     def _handle_parent_proc_signals(self):
         signal.signal(signal.SIGTERM, self._term_processes)
         signal.signal(signal.SIGINT, self._term_processes)
+        signal.signal(signal.SIGQUIT, self._term_processes)
 
     @property
     def elapsed_time(self):
