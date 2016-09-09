@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="shock",
-    version='0.1.19',
+    version='0.1.20',
     zip_safe=False,
     platforms='any',
     packages=['shock'],
