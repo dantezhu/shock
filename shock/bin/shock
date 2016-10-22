@@ -29,7 +29,6 @@ def version():
 def echo(concurrent, reps, url, msg_cmd, timeout, processes):
     """
     测试send & recv
-    :return:
     """
     obj = shock.ShockEcho(concurrent, reps, url, msg_cmd, timeout, processes)
     obj.run()
