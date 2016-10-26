@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import shock
-
 import click
+import shock
+import shock.utils
 
 
 @click.group()
@@ -20,17 +20,20 @@ def version():
 
 
 @cli.command()
+@click.option('--box_class', '-b', default='netkit.box.Box', help='box class')
 @click.option('--concurrent', '-c', type=int, default=10, help='spawn users, 10')
 @click.option('--reps', '-r', type=int, default=10, help='run times, 10')
 @click.option('--processes', '-p', default=1, type=int, help='process count, 1')
 @click.option('--url', '-u', help='url, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo', required=True)
 @click.option('--msg_cmd', '-m', default=1, type=int, help='msg cmd, 1')
 @click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
-def echo(concurrent, reps, url, msg_cmd, timeout, processes):
+def echo(box_class, concurrent, reps, url, msg_cmd, timeout, processes):
     """
     测试send & recv
     """
-    obj = shock.ShockEcho(concurrent, reps, url, msg_cmd, timeout, processes)
+
+    obj = shock.ShockEcho(shock.utils.import_module_or_string(box_class),
+                          concurrent, reps, url, msg_cmd, timeout, processes)
     obj.run()
     click.secho('done', fg='green')
     click.secho('Expected Transactions:     %-10d hits' % obj.expected_transactions)
@@ -44,15 +47,17 @@ def echo(concurrent, reps, url, msg_cmd, timeout, processes):
 
 
 @cli.command()
+@click.option('--box_class', '-b', default='netkit.box.Box', help='box class')
 @click.option('--concurrent', '-c', type=int, default=10, help='spawn users, 10')
 @click.option('--processes', '-p', default=1, type=int, help='process count, 1')
 @click.option('--url', '-u', help='url, like 127.0.0.1:7777, ws://127.0.0.1:8000/echo', required=True)
 @click.option('--timeout', '-o', default=5, type=int, help='timeout, 5')
-def connect(concurrent, url, timeout, processes):
+def connect(box_class, concurrent, url, timeout, processes):
     """
     测试connect
     """
-    obj = shock.ShockConnect(concurrent, url, timeout, processes)
+    obj = shock.ShockConnect(shock.utils.import_module_or_string(box_class),
+                             concurrent, url, timeout, processes)
     obj.run()
     click.secho('done', fg='green')
     click.secho('Expected Transactions:     %-10d hits' % obj.expected_transactions)

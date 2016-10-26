@@ -6,7 +6,6 @@ from multiprocessing import Process, Value, Lock as ProcessLock
 
 import click
 import setproctitle
-from netkit.box import Box
 from netkit.contrib.tcp_client import TcpClient
 
 import utils
@@ -27,19 +26,20 @@ class ProcessWorker(object):
     # 进程间共享数据
     share_result = None
 
-    def __init__(self, concurrent, url, timeout, share_result):
-        self.stream_checker = Box().check
-
+    def __init__(self, box_class, concurrent, url, timeout, share_result):
+        self.box_class = box_class
         self.concurrent = concurrent
         self.url = url
         self.timeout = timeout
         self.share_result = share_result
 
+        self.stream_checker = self.box_class().check
+
     def make_stream(self):
         host, port = self.url.split(':')
         address = (host, int(port))
 
-        client = TcpClient(Box, address=address, timeout=self.timeout)
+        client = TcpClient(self.box_class, address=address, timeout=self.timeout)
         client.connect()
 
         return client
@@ -98,8 +98,9 @@ class ShockConnect(object):
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
     share_failed_transactions = Value('i', 0)
 
-    def __init__(self, concurrent, url, timeout, process_count):
+    def __init__(self, box_class, concurrent, url, timeout, process_count):
         self.processes = []
+        self.box_class = box_class
         self.concurrent = concurrent
         self.url = url
         self.timeout = timeout
@@ -109,7 +110,7 @@ class ShockConnect(object):
         setproctitle.setproctitle(utils.make_proc_name('master'))
         self._handle_parent_proc_signals()
 
-        worker = ProcessWorker(self.concurrent, self.url, self.timeout, dict(
+        worker = ProcessWorker(self.box_class, self.concurrent, self.url, self.timeout, dict(
             lock=ProcessLock(),
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,

@@ -11,7 +11,6 @@ from threading import Thread
 import click
 import setproctitle
 from netkit.stream import Stream, LOCK_MODE_NONE
-from netkit.box import Box
 
 import utils
 
@@ -52,16 +51,17 @@ class ProcessWorker(object):
     # 进程间共享数据
     share_result = None
 
-    def __init__(self, concurrent, reps, url, msg_cmd, timeout, share_result):
-        self.thread_lock = ThreadLock()
-        self.stream_checker = Box().check
-
+    def __init__(self, box_class, concurrent, reps, url, msg_cmd, timeout, share_result):
+        self.box_class = box_class
         self.concurrent = concurrent
         self.reps = reps
         self.url = url
         self.msg_cmd = msg_cmd
         self.timeout = timeout
         self.share_result = share_result
+
+        self.stream_checker = self.box_class().check
+        self.thread_lock = ThreadLock()
 
     def make_stream(self):
         if self.url.startswith('ws://'):
@@ -86,7 +86,7 @@ class ProcessWorker(object):
             click.secho('thread_worker[%s] socket connect fail' % worker_idx, fg='red')
             return
 
-        box = Box()
+        box = self.box_class()
         box.cmd = self.msg_cmd
 
         send_buf = box.pack()
@@ -168,8 +168,9 @@ class ShockEcho(object):
     # 失败请求数，因为connect失败导致没发的请求也算在这里. 这3个值没有绝对的相等关系
     share_failed_transactions = Value('i', 0)
 
-    def __init__(self, concurrent, reps, url, msg_cmd, timeout, process_count):
+    def __init__(self, box_class, concurrent, reps, url, msg_cmd, timeout, process_count):
         self.processes = []
+        self.box_class = box_class
         self.concurrent = concurrent
         self.reps = reps
         self.url = url
@@ -181,7 +182,7 @@ class ShockEcho(object):
         setproctitle.setproctitle(utils.make_proc_name('master'))
         self._handle_parent_proc_signals()
 
-        worker = ProcessWorker(self.concurrent, self.reps, self.url, self.msg_cmd, self.timeout, dict(
+        worker = ProcessWorker(self.box_class, self.concurrent, self.reps, self.url, self.msg_cmd, self.timeout, dict(
             lock=ProcessLock(),
             elapsed_time=self.share_elapsed_time,
             transactions=self.share_transactions,
