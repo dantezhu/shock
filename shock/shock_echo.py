@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import click
 import signal
-
-from netkit.stream import Stream, LOCK_MODE_NONE
-from netkit.box import Box
-
 import time
 import socket
 from multiprocessing import Process, Value, Lock as ProcessLock
 from threading import Lock as ThreadLock
 from threading import Thread
+
+import click
+import setproctitle
+from netkit.stream import Stream, LOCK_MODE_NONE
+from netkit.box import Box
+
+import utils
 
 
 class WSClientStream(object):
@@ -117,6 +119,7 @@ class ProcessWorker(object):
             self.thread_lock.release()
 
     def run(self):
+        setproctitle.setproctitle(utils.make_proc_name('worker'))
         self._handle_child_proc_signals()
 
         jobs = []
@@ -175,6 +178,7 @@ class ShockEcho(object):
         self.process_count = process_count
 
     def run(self):
+        setproctitle.setproctitle(utils.make_proc_name('master'))
         self._handle_parent_proc_signals()
 
         worker = ProcessWorker(self.concurrent, self.reps, self.url, self.msg_cmd, self.timeout, dict(

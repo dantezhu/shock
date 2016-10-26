@@ -6,7 +6,7 @@ setup(
     zip_safe=False,
     platforms='any',
     packages=['shock'],
-    install_requires=['netkit', 'click'],
+    install_requires=['netkit', 'click', 'setproctitle'],
     scripts=['shock/bin/shock'],
     url="https://github.com/dantezhu/shock",
     license="BSD",

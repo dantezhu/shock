@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import click
 import signal
+import time
+from multiprocessing import Process, Value, Lock as ProcessLock
 
+import click
+import setproctitle
 from netkit.box import Box
 from netkit.contrib.tcp_client import TcpClient
 
-import time
-from multiprocessing import Process, Value, Lock as ProcessLock
+import utils
 
 
 class ProcessWorker(object):
@@ -43,6 +45,7 @@ class ProcessWorker(object):
         return client
 
     def run(self):
+        setproctitle.setproctitle(utils.make_proc_name('worker'))
         self._handle_child_proc_signals()
 
         begin_time = time.time()
@@ -103,6 +106,7 @@ class ShockConnect(object):
         self.process_count = process_count
 
     def run(self):
+        setproctitle.setproctitle(utils.make_proc_name('master'))
         self._handle_parent_proc_signals()
 
         worker = ProcessWorker(self.concurrent, self.url, self.timeout, dict(
