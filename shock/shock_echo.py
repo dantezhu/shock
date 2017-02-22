@@ -66,12 +66,18 @@ class ProcessWorker(object):
     def make_stream(self):
         if self.url.startswith('ws://'):
             import websocket
-            s = websocket.create_connection(self.url)
+            s = websocket.create_connection(
+                self.url,
+                sockopt=[
+                    (socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                ]
+            )
             stream = WSClientStream(s)
         else:
             host, port = self.url.split(':')
             address = (host, int(port))
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.connect(address)
             s.settimeout(self.timeout)
             stream = Stream(s, lock_mode=LOCK_MODE_NONE)
