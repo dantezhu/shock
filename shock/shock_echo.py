@@ -64,7 +64,7 @@ class ProcessWorker(object):
         self.thread_lock = ThreadLock()
 
     def make_stream(self):
-        if self.url.startswith('ws://'):
+        if self.url.startswith('ws://') or self.url.startswith('wss://'):
             import websocket
             s = websocket.create_connection(
                 self.url,
