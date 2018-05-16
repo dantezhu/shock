@@ -12,7 +12,7 @@ import click
 import setproctitle
 from netkit.stream import Stream, LOCK_MODE_NONE
 
-import utils
+from . import utils
 
 
 class WSClientStream(object):
@@ -99,7 +99,7 @@ class ProcessWorker(object):
 
         transactions = successful_transactions = failed_transactions = 0
 
-        for it in xrange(0, self.reps):
+        for it in range(0, self.reps):
             transactions += 1
             stream.write(send_buf)
             try:
@@ -132,7 +132,7 @@ class ProcessWorker(object):
 
         begin_time = time.time()
 
-        for it in xrange(0, self.concurrent):
+        for it in range(0, self.concurrent):
             job = Thread(target=self.thread_worker, args=[it])
             job.daemon = True
             job.start()
@@ -196,7 +196,7 @@ class ShockEcho(object):
             failed_transactions=self.share_failed_transactions,
         ))
 
-        for it in xrange(0, self.process_count):
+        for it in range(0, self.process_count):
             proc = Process(target=worker.run)
             proc.daemon = True
             proc.start()

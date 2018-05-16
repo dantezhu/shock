@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
+
 import sys
 import os
 
@@ -19,7 +21,7 @@ def version():
     """
     版本号
     """
-    print shock.__version__
+    print(shock.__version__)
 
 
 @cli.command()

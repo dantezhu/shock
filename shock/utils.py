@@ -2,7 +2,8 @@
 
 import sys
 
-import constants
+from . import constants
+from .six import string_types
 
 
 def make_proc_name(subtitle):
@@ -26,5 +27,5 @@ def import_module_or_string(src):
     :param src:
     :return:
     """
-    from config import import_string
-    return import_string(src) if isinstance(src, (str, unicode)) else src
+    from .config import import_string
+    return import_string(src) if isinstance(src, string_types) else src

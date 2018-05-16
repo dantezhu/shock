@@ -8,7 +8,7 @@ import click
 import setproctitle
 from netkit.contrib.tcp_client import TcpClient
 
-import utils
+from . import utils
 
 
 class ProcessWorker(object):
@@ -52,7 +52,7 @@ class ProcessWorker(object):
 
         # 要存起来，否则socket会自动释放
         client_list = []
-        for it in xrange(0, self.concurrent):
+        for it in range(0, self.concurrent):
             self.transactions += 1
 
             try:
@@ -118,7 +118,7 @@ class ShockConnect(object):
             failed_transactions=self.share_failed_transactions,
         ))
 
-        for it in xrange(0, self.process_count):
+        for it in range(0, self.process_count):
             proc = Process(target=worker.run)
             proc.daemon = True
             proc.start()
