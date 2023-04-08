@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shock"
+version = "0.2.4"
+authors = [{name = "dantezhu", email = "zny2008@gmail.com"}]
+license = {text = "BSD"}
+description = "tool for server load performance testing"
+urls = {Homepage = "https://github.com/dantezhu/shock"}
+dependencies = ["netkit", "click", "setproctitle"]
+
+[tool.setuptools]
+packages = ["shock"]
+zip-safe = false
+script-files = ["shock/bin/shock"]
+platforms = ["any"]
+include-package-data = false
